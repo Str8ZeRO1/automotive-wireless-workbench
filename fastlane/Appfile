@@ -1,0 +1,2 @@
+app_identifier(ENV["APP_BUNDLE_ID"] || "com.str8zero.automotivedash")
+team_id(ENV["DEVELOPMENT_TEAM_ID"])

@@ -1,0 +1,26 @@
+# iOS / Xcode
+ios/AutomotiveDash.xcodeproj/
+ios/.build/
+ios/DerivedData/
+*.xcuserstate
+.DS_Store
+
+# Fastlane
+fastlane/appstore_connect_api_key.json
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+build/
+
+# Secrets - never commit these even if accidentally created locally
+.env
+*.p8
+*.mobileprovision
+*.p12
+
+# Python
+pi-gateway/__pycache__/
+pi-gateway/**/__pycache__/
+pi-gateway/.venv/
+*.pyc

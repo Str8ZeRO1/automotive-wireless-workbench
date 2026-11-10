@@ -1,0 +1,81 @@
+name: iOS CI (build + sign ad-hoc IPA)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "fastlane/**"
+      - ".github/workflows/ios-ci.yml"
+  workflow_dispatch:
+    inputs:
+      register_device:
+        description: "Also (re-)register device UDIDs from secrets before building"
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      APP_BUNDLE_ID: com.str8zero.automotivedash
+      DEVELOPMENT_TEAM_ID: ${{ secrets.DEVELOPMENT_TEAM_ID }}
+      PROVISIONING_PROFILE_SPECIFIER: "match AdHoc com.str8zero.automotivedash"
+      MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+      MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      DEVICE_UDIDS: ${{ secrets.DEVICE_UDIDS }}
+      DEVICE_NAMES: ${{ secrets.DEVICE_NAMES }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Set up Ruby + bundler cache
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          working-directory: fastlane
+
+      - name: Write App Store Connect API key
+        env:
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_P8_KEY: ${{ secrets.APPSTORE_P8_KEY }}
+        run: |
+          cat <<EOF > fastlane/appstore_connect_api_key.json
+          {
+            "key_id": "$APPSTORE_KEY_ID",
+            "issuer_id": "$APPSTORE_ISSUER_ID",
+            "key": $(python3 -c 'import json,os,sys; print(json.dumps(os.environ["APPSTORE_P8_KEY"]))'),
+            "in_house": false
+          }
+          EOF
+
+      - name: Register device UDIDs (manual trigger only)
+        if: ${{ inputs.register_device }}
+        run: bundle exec fastlane ios register_devices
+        working-directory: fastlane
+
+      - name: Build + sign ad-hoc IPA
+        run: bundle exec fastlane ios build_adhoc
+        working-directory: fastlane
+
+      - name: Remove API key from disk
+        if: always()
+        run: rm -f fastlane/appstore_connect_api_key.json
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutomotiveDash-adhoc
+          path: build/AutomotiveDash.ipa
+          retention-days: 30

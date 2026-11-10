@@ -1,0 +1,57 @@
+name: AutomotiveDash
+options:
+  bundleIdPrefix: com.str8zero
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+configs:
+  Debug: debug
+  Release: release
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: "${DEVELOPMENT_TEAM_ID}"
+    CODE_SIGN_STYLE: Manual
+    PRODUCT_BUNDLE_IDENTIFIER: com.str8zero.automotivedash
+packages:
+  CocoaMQTT:
+    url: https://github.com/emqx/CocoaMQTT.git
+    from: 2.1.6
+targets:
+  AutomotiveDash:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: AutomotiveDash
+    info:
+      path: AutomotiveDash/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSLocalNetworkUsageDescription: "AutomotiveDash connects to your Str8Zero gateway's MQTT broker over your local Wi-Fi network to receive live telemetry."
+        NSBonjourServices:
+          - _mqtt._tcp
+    settings:
+      base:
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        PRODUCT_BUNDLE_IDENTIFIER: com.str8zero.automotivedash
+        CODE_SIGN_IDENTITY: "Apple Distribution"
+        PROVISIONING_PROFILE_SPECIFIER: "${PROVISIONING_PROFILE_SPECIFIER}"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: true
+    dependencies:
+      - package: CocoaMQTT
+schemes:
+  AutomotiveDash:
+    build:
+      targets:
+        AutomotiveDash: all
+    run:
+      config: Debug
+    archive:
+      config: Release

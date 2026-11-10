@@ -1,0 +1,69 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Install XcodeGen and generate the .xcodeproj from ios/project.yml"
+  lane :generate_project do
+    Dir.chdir("../ios") do
+      sh("xcodegen generate")
+    end
+  end
+
+  desc "Fetch/create signing certs + ad-hoc provisioning profile via match (CI, read-only)"
+  lane :sync_signing do
+    setup_ci if ENV["CI"]
+    match(
+      type: "adhoc",
+      readonly: is_ci,
+      app_identifier: ENV["APP_BUNDLE_ID"] || "com.str8zero.automotivedash",
+      git_url: ENV["MATCH_GIT_URL"],
+      git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTHORIZATION"],
+      api_key_path: "fastlane/appstore_connect_api_key.json"
+    )
+  end
+
+  desc "Register the device UDID(s) supplied via DEVICE_UDIDS (comma-separated) with match/portal"
+  lane :register_devices do
+    device_names = (ENV["DEVICE_NAMES"] || "Jay's iPhone").split(",")
+    device_udids = (ENV["DEVICE_UDIDS"] || "").split(",")
+    abort("DEVICE_UDIDS is empty; nothing to register") if device_udids.empty?
+
+    devices = device_udids.each_with_index.map do |udid, i|
+      { name: (device_names[i] || "Device #{i + 1}").strip, udid: udid.strip }
+    end
+
+    register_devices(
+      devices_file: nil,
+      devices: devices.each_with_object({}) { |d, h| h[d[:name]] = d[:udid] },
+      api_key_path: "fastlane/appstore_connect_api_key.json"
+    )
+
+    # Registering a new device invalidates an existing ad-hoc profile, so
+    # force-regenerate it afterward.
+    match(
+      type: "adhoc",
+      force_for_new_devices: true,
+      app_identifier: ENV["APP_BUNDLE_ID"] || "com.str8zero.automotivedash",
+      git_url: ENV["MATCH_GIT_URL"],
+      git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTHORIZATION"],
+      api_key_path: "fastlane/appstore_connect_api_key.json"
+    )
+  end
+
+  desc "Build + sign the ad-hoc IPA (CI entry point)"
+  lane :build_adhoc do
+    generate_project
+    sync_signing
+
+    gym(
+      workspace: nil,
+      project: "ios/AutomotiveDash.xcodeproj",
+      scheme: "AutomotiveDash",
+      configuration: "Release",
+      export_method: "ad-hoc",
+      output_directory: "build",
+      output_name: "AutomotiveDash.ipa",
+      clean: true,
+      xcargs: "DEVELOPMENT_TEAM=#{ENV['DEVELOPMENT_TEAM_ID']} PROVISIONING_PROFILE_SPECIFIER=#{ENV['PROVISIONING_PROFILE_SPECIFIER']}"
+    )
+  end
+end

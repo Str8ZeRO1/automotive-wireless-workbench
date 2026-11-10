@@ -1,0 +1,22 @@
+[Unit]
+Description=Str8Zero Automotive Wireless Gateway (sniff/simulate daemon)
+After=network-online.target mosquitto.service
+Wants=network-online.target
+Requires=mosquitto.service
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/opt/str8zero-gateway/pi-gateway
+EnvironmentFile=-/opt/str8zero-gateway/pi-gateway/.env
+ExecStart=/opt/str8zero-gateway/pi-gateway/.venv/bin/python3 run_mode.py
+Restart=on-failure
+RestartSec=5
+# Hardening: the gateway only needs network + SPI/USB device access, nothing else.
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/str8zero-gateway/pi-gateway
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
